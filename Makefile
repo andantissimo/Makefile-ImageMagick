@@ -24,7 +24,7 @@ clean:
 	cd share/man/man1 && $(RM) heif-thumbnailer.1
 	cd share/man/man1 && $(RM) cjpeg.1 djpeg.1 jpegtran.1 rdjpgcom.1 wrjpgcom.1
 	cd share/man/man1 && $(RM) cwebp.1 dwebp.1 img2webp.1 webpinfo.1 webpmux.1
-	$(RM) -r include lib tmp
+	$(RM) -r etc include lib tmp
 
 bin/magick: lib/liblcms2.a \
             lib/libheif.a \
@@ -41,6 +41,7 @@ bin/magick: lib/liblcms2.a \
 		--disable-deprecated \
 		--disable-installed \
 		--disable-cipher \
+		--enable-zero-configuration \
 		--disable-assert \
 		--disable-docs \
 		--without-modules \
