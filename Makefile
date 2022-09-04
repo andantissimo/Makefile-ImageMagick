@@ -1,12 +1,12 @@
 ## ImageMagick
 
-IMAGE_MAGICK_VERSION  = 7.1.0-8
-AOM_VERSION           = 3.1.2
-LITTLE_CMS2_VERSION   = 2.12
-LIBHEIF_VERSION       = 1.12.0
-LIBJPEG_TURBO_VERSION = 2.1.1
+IMAGE_MAGICK_VERSION  = 7.1.0-47
+AOM_VERSION           = 3.4.0
+LITTLE_CMS2_VERSION   = 2.13.1
+LIBHEIF_VERSION       = 1.13.0
+LIBJPEG_TURBO_VERSION = 2.1.4
 LIBPNG_VERSION        = 1.6.37
-LIBWEBP_VERSION       = 1.2.1
+LIBWEBP_VERSION       = 1.2.4
 
 all: bin/magick
 
@@ -38,8 +38,11 @@ bin/magick: lib/liblcms2.a \
 		--disable-osx-universal-binary \
 		--disable-openmp \
 		--disable-opencl \
+		--disable-deprecated \
 		--disable-installed \
 		--disable-cipher \
+		--disable-assert \
+		--disable-docs \
 		--without-modules \
 		--without-magick-plus-plus \
 		--without-bzlib \
