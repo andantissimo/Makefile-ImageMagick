@@ -1,12 +1,13 @@
 ## ImageMagick
 
-IMAGE_MAGICK_VERSION  = 7.1.0-47
-AOM_VERSION           = 3.4.0
-LITTLE_CMS2_VERSION   = 2.13.1
-LIBHEIF_VERSION       = 1.13.0
-LIBJPEG_TURBO_VERSION = 2.1.4
-LIBPNG_VERSION        = 1.6.37
-LIBWEBP_VERSION       = 1.2.4
+IMAGE_MAGICK_VERSION  = 7.1.0-62
+AOM_VERSION           = 3.6.0
+LITTLE_CMS2_VERSION   = 2.14
+LIBHEIF_VERSION       = 1.14.2
+LIBJPEG_TURBO_VERSION = 2.1.5.1
+LIBPNG_VERSION        = 1.6.39
+LIBWEBP_VERSION       = 1.3.0
+LIBXML2_VERSION       = 2.10.3
 
 all: bin/magick
 
@@ -16,21 +17,16 @@ clean:
 	cd bin && $(RM) cjpeg djpeg jpegtran rdjpgcom wrjpgcom tjbench
 	cd bin && $(RM) libpng-config libpng16-config png-fix-itxt pngfix
 	cd bin && $(RM) cwebp dwebp img2webp webpinfo webpmux
-	cd share && $(RM) -r doc man/man3 man/man5 mime thumbnailers
-	cd share/man/man1 && $(RM) ImageMagick.1
-	cd share/man/man1 && $(RM) MagickCore-config.1 MagickWand-config.1
-	cd share/man/man1 && $(RM) jpgicc.1 linkicc.1 psicc.1 tificc.1 transicc.1
-	cd share/man/man1 && $(RM) heif-convert.1 heif-enc.1 heif-info.1
-	cd share/man/man1 && $(RM) heif-thumbnailer.1
-	cd share/man/man1 && $(RM) cjpeg.1 djpeg.1 jpegtran.1 rdjpgcom.1 wrjpgcom.1
-	cd share/man/man1 && $(RM) cwebp.1 dwebp.1 img2webp.1 webpinfo.1 webpmux.1
+	cd bin && $(RM) xml2-config xmlcatalog xmllint
+	cd share && $(RM) -r aclocal doc gtk-doc man mime thumbnailers
 	$(RM) -r etc include lib tmp
 
 bin/magick: lib/liblcms2.a \
             lib/libheif.a \
             lib/libjpeg.a \
             lib/libpng.a \
-            lib/libwebp.a
+            lib/libwebp.a \
+            lib/libxml2.a
 	cd src/ImageMagick-$(IMAGE_MAGICK_VERSION) && \
 	export PKG_CONFIG_PATH=$(PWD)/lib/pkgconfig && \
 	./configure --prefix=$(PWD) --disable-dependency-tracking \
@@ -76,7 +72,7 @@ bin/magick: lib/liblcms2.a \
 		--without-tiff \
 		--with-webp \
 		--without-wmf \
-		--without-xml \
+		--with-xml \
 		LDFLAGS='-lz' && \
 	$(MAKE) install
 
@@ -150,4 +146,20 @@ lib/libwebp.a: lib/libjpeg.a \
 		--disable-sdl \
 		--disable-tiff \
 		--disable-gif && \
+	$(MAKE) install
+
+lib/libxml2.a:
+	cd src/libxml2-$(LIBXML2_VERSION) && \
+	./configure --prefix=$(PWD) --disable-dependency-tracking \
+		--enable-static --disable-shared \
+		--without-c14n --without-catalog --without-debug \
+		--without-fexceptions --without-ftp --without-history --without-html \
+		--without-http --without-iconv --without-icu --without-iso8859x \
+		--without-legacy --without-mem-debug --with-minimum --without-output \
+		--without-pattern --with-push --without-python --without-reader \
+		--without-readline --without-regexps --without-run-debug --with-sax1 \
+		--without-schemas --without-schematron --without-threads --with-tree \
+		--without-valid --without-writer --without-xinclude --without-xpath \
+		--without-xptr --without-modules --without-zlib --without-lzma \
+		--without-coverage && \
 	$(MAKE) install
