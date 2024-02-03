@@ -1,16 +1,16 @@
 ## ImageMagick
 
-IMAGE_MAGICK_VERSION  = 7.1.1-21
-DAV1D_VERSION         = 1.2.1
-KVAZAAR_VERSION       = 2.2.0
-LITTLE_CMS2_VERSION   = 2.15
-LIBDE265_VERSION      = 1.0.12
-LIBHEIF_VERSION       = 1.17.3
-LIBJPEG_TURBO_VERSION = 3.0.0
-LIBPNG_VERSION        = 1.6.40
-LIBWEBP_VERSION       = 1.3.2
-LIBXML2_VERSION       = 2.11.5
-RAV1E_VERSION         = 0.6.6
+IMAGE_MAGICK_VERSION = 7.1.1-27
+DAV1D_VERSION        = 1.3.0
+KVAZAAR_VERSION      = 2.3.0
+LITTLE_CMS2_VERSION  = 2.16
+LIBDE265_VERSION     = 1.0.15
+LIBHEIF_VERSION      = 1.17.6
+LIBPNG_VERSION       = 1.6.41
+LIBWEBP_VERSION      = 1.3.2
+LIBXML2_VERSION      = 2.12.4
+MOZJPEG_VERSION      = 4.1.5
+RAV1E_VERSION        = 0.7.1
 
 all: bin/magick
 
@@ -26,7 +26,7 @@ clean:
 	cd bin && $(RM) cwebp dwebp img2webp webpinfo webpmux
 	cd bin && $(RM) xml2-config xmlcatalog xmllint
 	cd share && $(RM) -r aclocal doc gtk-doc man mime thumbnailers
-	$(RM) -r etc include lib libdata tmp
+	$(RM) -r include lib libdata tmp
 
 bin/magick: lib/liblcms2.a \
             lib/libheif.a \
@@ -125,6 +125,7 @@ lib/libheif.a: lib/libdav1d.a lib/libde265.a lib/libkvazaar.a lib/librav1e.a
 	    -i'.bak' libheif/plugins/encoder_kvazaar.cc && \
 	cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$(PWD) \
 		-DBUILD_SHARED_LIBS=OFF -DBUILD_TESTING=OFF -DWITH_EXAMPLES=OFF \
+		-DENABLE_PLUGIN_LOADING=OFF \
 		-DWITH_AOM_DECODER=OFF -DWITH_AOM_ENCODER=OFF \
 		-DWITH_DAV1D=ON -DWITH_DAV1D_PLUGIN=OFF \
 		-DWITH_GDK_PIXBUF=OFF \
@@ -147,12 +148,14 @@ ifeq ($(shell uname),Linux)
 endif
 
 lib/libjpeg.a:
-	cd src/libjpeg-turbo-$(LIBJPEG_TURBO_VERSION) && \
+	cd src/mozjpeg-$(MOZJPEG_VERSION) && \
 	cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$(PWD) \
 		-DCMAKE_INSTALL_LIBDIR=$(PWD)/lib \
 		-DCMAKE_INSTALL_MANDIR=$(PWD)/share/man \
 		-DENABLE_SHARED=OFF -DENABLE_STATIC=ON \
+		-DPNG_SUPPORTED=OFF \
 		-DWITH_JPEG8=ON \
+		-DWITH_TURBOJPEG=OFF \
 		. && \
 	$(MAKE) install
 
@@ -174,9 +177,9 @@ lib/libwebp.a: lib/libjpeg.a \
 	cd src/libwebp-$(LIBWEBP_VERSION) && \
 	./configure --prefix=$(PWD) --disable-dependency-tracking \
 		--disable-shared --enable-static \
-		--enable-libwebpmux \
-		--enable-libwebpdemux \
-		--enable-libwebpdecoder \
+		--disable-libwebpmux \
+		--disable-libwebpdemux \
+		--disable-libwebpdecoder \
 		--disable-gl \
 		--disable-sdl \
 		--disable-tiff \
