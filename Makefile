@@ -122,11 +122,10 @@ lib/libheif.a: lib/libdav1d.a lib/libde265.a lib/libkvazaar.a lib/libwebp.a
 	cd src/libheif-$(LIBHEIF_VERSION) && \
 	sed -e 's@ kvzChroma;@ kvzChroma{};@' \
 	    -i'.bak' libheif/plugins/encoder_kvazaar.cc && \
+	export PKG_CONFIG_PATH=$(PWD)/lib/pkgconfig && \
 	cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$(PWD) \
 		-DBUILD_SHARED_LIBS=OFF -DBUILD_TESTING=OFF -DWITH_EXAMPLES=OFF \
 		-DENABLE_PLUGIN_LOADING=OFF \
-		-DLIBSHARPYUV_INCLUDE_DIR=$(PWD)/include/webp \
-		-DLIBSHARPYUV_LIBRARY=$(PWD)/lib \
 		-DWITH_AOM_DECODER=OFF -DWITH_AOM_ENCODER=OFF \
 		-DWITH_DAV1D=ON -DWITH_DAV1D_PLUGIN=OFF \
 		-DWITH_GDK_PIXBUF=OFF \
