@@ -14,18 +14,17 @@ MOZJPEG_VERSION      = 4.1.5
 all: bin/magick
 
 clean:
-	cd bin && $(RM) MagickCore-config MagickWand-config
-	cd bin && $(RM) kvazaar
-	cd bin && $(RM) acceleration_speed bjoentegaard block-rate-estim
-	cd bin && $(RM) gen-enc-table rd-curves tests yuv-distortion
-	cd bin && $(RM) heif-convert heif-enc heif-info heif-thumbnailer
-	cd bin && $(RM) jpgicc linkicc psicc transicc
-	cd bin && $(RM) cjpeg djpeg jpegtran rdjpgcom wrjpgcom tjbench
-	cd bin && $(RM) libpng-config libpng16-config png-fix-itxt pngfix
-	cd bin && $(RM) cwebp dwebp img2webp webpinfo webpmux
-	cd bin && $(RM) xml2-config xmlcatalog xmllint
-	cd share && $(RM) -r aclocal doc gtk-doc man mime thumbnailers
 	$(RM) -r include lib libdata tmp
+	$(RM) -r share/WebP share/aclocal share/doc share/man/man3 share/man/man5
+	cd bin            && $(RM) MagickCore-config   MagickWand-config
+	cd share/man/man1 && $(RM) MagickCore-config.1 MagickWand-config.1
+	cd bin            && $(RM) kvazaar
+	cd share/man/man1 && $(RM) kvazaar.1
+	cd bin            && $(RM) cjpeg   djpeg   jpegtran   rdjpgcom   wrjpgcom
+	cd share/man/man1 && $(RM) cjpeg.1 djpeg.1 jpegtran.1 rdjpgcom.1 wrjpgcom.1
+	cd bin            && $(RM) libpng-config libpng16-config
+	cd bin            && $(RM) xml2-config
+	cd share/man/man1 && $(RM) xml2-config.1 xmlcatalog.1 xmllint.1
 
 bin/magick: lib/liblcms2.a \
             lib/libheif.a \
@@ -45,7 +44,6 @@ bin/magick: lib/liblcms2.a \
 		--disable-cipher \
 		--enable-zero-configuration \
 		--disable-assert \
-		--disable-docs \
 		--without-modules \
 		--without-magick-plus-plus \
 		--without-bzlib \
@@ -87,19 +85,22 @@ lib/libdav1d.a:
 	meson --prefix=$(PWD) --libdir=$(PWD)/lib \
 		--buildtype release --default-library static \
 		-Denable_tools=false -Denable_examples=false -Denable_tests=false \
+		-Denable_docs=false -Dxxhash_muxer=disabled \
 		build && \
 	ninja install -C build
 ifeq ($(shell uname),FreeBSD)
+	mkdir -p lib/pkgconfig
 	cat libdata/pkgconfig/dav1d.pc | sed -e 's@^\(Libs:.*\)$$@\1 -lpthread@' \
 	  > lib/pkgconfig/dav1d.pc
 endif
 
 lib/libde265.a:
 	cd src/libde265-$(LIBDE265_VERSION) && \
-	./configure --prefix=$(PWD) --disable-dependency-tracking \
-		--disable-shared --enable-static \
-		--disable-dec265 \
-		--disable-sherlock265 && \
+	cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$(PWD) \
+		-DBUILD_SHARED_LIBS=OFF \
+		-DENABLE_DECODER=OFF -DENABLE_ENCODER=OFF \
+		-DENABLE_SDL=OFF \
+		. && \
 	$(MAKE) install
 
 lib/libkvazaar.a:
@@ -109,15 +110,18 @@ lib/libkvazaar.a:
 		--disable-shared --enable-static && \
 	$(MAKE) install
 
-lib/liblcms2.a: lib/libjpeg.a
+lib/liblcms2.a:
 	cd src/lcms2-$(LITTLE_CMS2_VERSION) && \
-	./configure --prefix=$(PWD) --disable-dependency-tracking \
-		--disable-shared --enable-static \
-		--with-jpeg \
-		--without-tiff && \
-	$(MAKE) install
+	meson --prefix=$(PWD) --libdir=$(PWD)/lib \
+		--buildtype release --default-library static \
+		-Djpeg=disabled -Dtiff=disabled -Dutils=false -Dsamples=false \
+		build && \
+	ninja install -C build
+ifeq ($(shell uname),FreeBSD)
+	mkdir -p lib/pkgconfig
+	cat libdata/pkgconfig/lcms2.pc > lib/pkgconfig/lcms2.pc
+endif
 
-LIBHEIF_PC_LIBS = -ldav1d -lde265 -lkvazaar
 lib/libheif.a: lib/libdav1d.a lib/libde265.a lib/libkvazaar.a lib/libwebp.a
 	cd src/libheif-$(LIBHEIF_VERSION) && \
 	sed -e 's@ kvzChroma;@ kvzChroma{};@' \
@@ -134,15 +138,15 @@ lib/libheif.a: lib/libdav1d.a lib/libde265.a lib/libkvazaar.a lib/libwebp.a
 		. && \
 	$(MAKE) install
 ifeq ($(shell uname),Darwin)
-	sed -e 's@^\(Libs:.*\)$$@\1 $(LIBHEIF_PC_LIBS) -lc++@' \
+	sed -e 's@^\(Libs:.*\)$$@\1 -ldav1d -lde265 -lkvazaar -lsharpyuv -lc++@' \
 	    -i'.bak' lib/pkgconfig/libheif.pc
 endif
 ifeq ($(shell uname),FreeBSD)
-	sed -e 's@^\(Libs:.*\)$$@\1 $(LIBHEIF_PC_LIBS) -lc++@' \
+	sed -e 's@^\(Libs:.*\)$$@\1 -ldav1d -lde265 -lkvazaar -lsharpyuv -lc++@' \
 	    -i'.bak' lib/pkgconfig/libheif.pc
 endif
 ifeq ($(shell uname),Linux)
-	sed -e 's@^\(Libs:.*\)$$@\1 $(LIBHEIF_PC_LIBS) -ldl -lstdc++@' \
+	sed -e 's@^\(Libs:.*\)$$@\1 -ldav1d -lde265 -lkvazaar -lsharpyuv -ldl -lstdc++@' \
 	    -i'.bak' lib/pkgconfig/libheif.pc
 endif
 
@@ -160,36 +164,56 @@ lib/libjpeg.a:
 
 lib/libpng.a:
 	cd src/libpng-$(LIBPNG_VERSION) && \
-	./configure --prefix=$(PWD) --disable-dependency-tracking \
-		--disable-shared --enable-static && \
+	cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$(PWD) \
+		-DPNG_EXECUTABLES=OFF -DPNG_FRAMEWORK=OFF \
+		-DPNG_SHARED=OFF -DPNG_STATIC=ON \
+		-DPNG_TESTS=OFF -DPNG_TOOLS=OFF \
+		. && \
 	$(MAKE) install
 
-lib/libwebp.a: lib/libjpeg.a \
-               lib/libpng.a
+lib/libwebp.a:
 	cd src/libwebp-$(LIBWEBP_VERSION) && \
-	./configure --prefix=$(PWD) --disable-dependency-tracking \
-		--disable-shared --enable-static \
-		--disable-libwebpmux \
-		--disable-libwebpdemux \
-		--disable-libwebpdecoder \
-		--disable-gl \
-		--disable-sdl \
-		--disable-tiff \
-		--disable-gif && \
+	cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$(PWD) \
+		-DWEBP_BUILD_ANIM_UTILS=OFF \
+		-DWEBP_BUILD_CWEBP=OFF -DWEBP_BUILD_DWEBP=OFF \
+		-DWEBP_BUILD_EXTRAS=OFF \
+		-DWEBP_BUILD_GIF2WEBP=OFF \
+		-DWEBP_BUILD_IMG2WEBP=OFF \
+		-DWEBP_BUILD_LIBWEBPMUX=OFF \
+		-DWEBP_BUILD_VWEBP=OFF \
+		-DWEBP_BUILD_WEBPINFO=OFF \
+		-DWEBP_BUILD_WEBPMUX=OFF \
+		. && \
 	$(MAKE) install
 
 lib/libxml2.a:
 	cd src/libxml2-$(LIBXML2_VERSION) && \
-	./configure --prefix=$(PWD) --disable-dependency-tracking \
-		--enable-static --disable-shared \
-		--without-c14n --without-catalog --without-debug \
-		--without-fexceptions --without-ftp --without-history --without-html \
-		--without-http --without-iconv --without-icu --without-iso8859x \
-		--without-legacy --without-mem-debug --with-minimum --without-output \
-		--without-pattern --with-push --without-python --without-reader \
-		--without-readline --without-regexps --without-run-debug --with-sax1 \
-		--without-schemas --without-schematron --without-threads --with-tree \
-		--without-valid --without-writer --without-xinclude --without-xpath \
-		--without-xptr --without-modules --without-zlib --without-lzma \
-		--without-coverage && \
+	cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$(PWD) \
+		-DBUILD_SHARED_LIBS=OFF \
+		-DLIBXML2_WITH_C14N=OFF \
+		-DLIBXML2_WITH_CATALOG=OFF \
+		-DLIBXML2_WITH_DEBUG=OFF \
+		-DLIBXML2_WITH_HTML=OFF \
+		-DLIBXML2_WITH_HTTP=OFF \
+		-DLIBXML2_WITH_ICONV=OFF \
+		-DLIBXML2_WITH_ISO8859X=OFF \
+		-DLIBXML2_WITH_LZMA=OFF \
+		-DLIBXML2_WITH_MODULES=OFF \
+		-DLIBXML2_WITH_OUTPUT=OFF \
+		-DLIBXML2_WITH_PATTERN=OFF \
+		-DLIBXML2_WITH_PROGRAMS=OFF \
+		-DLIBXML2_WITH_PYTHON=OFF \
+		-DLIBXML2_WITH_READER=OFF \
+		-DLIBXML2_WITH_REGEXPS=OFF \
+		-DLIBXML2_WITH_SCHEMAS=OFF \
+		-DLIBXML2_WITH_SCHEMATRON=OFF \
+		-DLIBXML2_WITH_TESTS=OFF \
+		-DLIBXML2_WITH_THREADS=OFF \
+		-DLIBXML2_WITH_VALID=OFF \
+		-DLIBXML2_WITH_WRITER=OFF \
+		-DLIBXML2_WITH_XINCLUDE=OFF \
+		-DLIBXML2_WITH_XPATH=OFF \
+		-DLIBXML2_WITH_XPTR=OFF \
+		-DLIBXML2_WITH_ZLIB=OFF \
+		. && \
 	$(MAKE) install
