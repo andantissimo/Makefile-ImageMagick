@@ -11,6 +11,8 @@ LIBWEBP_VERSION      = 1.3.2
 LIBXML2_VERSION      = 2.12.4
 MOZJPEG_VERSION      = 4.1.5
 
+OS := $(shell uname -s)
+
 all: bin/magick
 
 clean:
@@ -82,13 +84,13 @@ bin/magick: lib/liblcms2.a \
 
 lib/libdav1d.a:
 	cd src/dav1d-$(DAV1D_VERSION) && \
-	meson --prefix=$(PWD) --libdir=$(PWD)/lib \
+	meson setup --prefix=$(PWD) --libdir=$(PWD)/lib \
 		--buildtype release --default-library static \
 		-Denable_tools=false -Denable_examples=false -Denable_tests=false \
 		-Denable_docs=false -Dxxhash_muxer=disabled \
 		build && \
 	ninja install -C build
-ifeq ($(shell uname),FreeBSD)
+ifeq ($(OS),FreeBSD)
 	mkdir -p lib/pkgconfig
 	cat libdata/pkgconfig/dav1d.pc | sed -e 's@^\(Libs:.*\)$$@\1 -lpthread@' \
 	  > lib/pkgconfig/dav1d.pc
@@ -104,20 +106,30 @@ lib/libde265.a:
 	$(MAKE) install
 
 lib/libkvazaar.a:
+	mkdir -p include lib/pkgconfig
 	cd src/kvazaar-$(KVAZAAR_VERSION) && \
-	./autogen.sh && \
-	./configure --prefix=$(PWD) --disable-dependency-tracking \
-		--disable-shared --enable-static && \
-	$(MAKE) install
+	curl https://github.com/ultravideo/kvazaar/commit/d8c9688.patch \
+	   | patch -p1 && \
+	cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$(PWD) \
+		-DBUILD_SHARED_LIBS=OFF -DBUILD_TESTS=OFF \
+		. && \
+	$(MAKE) $(MAKE_ARGS) && \
+	install -m 644 src/kvazaar.h $(PWD)/include/kvazaar.h && \
+	install -m 644 src/kvazaar.pc $(PWD)/lib/pkgconfig/kvazaar.pc && \
+	install -m 644 libkvazaar.a $(PWD)/lib/libkvazaar.a
+ifeq ($(OS),FreeBSD)
+	sed -e 's@^\(Libs:.*\)$$@\1 -lpthread@' \
+	    -i'.bak' lib/pkgconfig/kvazaar.pc
+endif
 
 lib/liblcms2.a:
 	cd src/lcms2-$(LITTLE_CMS2_VERSION) && \
-	meson --prefix=$(PWD) --libdir=$(PWD)/lib \
+	meson setup --prefix=$(PWD) --libdir=$(PWD)/lib \
 		--buildtype release --default-library static \
 		-Djpeg=disabled -Dtiff=disabled -Dutils=false -Dsamples=false \
 		build && \
 	ninja install -C build
-ifeq ($(shell uname),FreeBSD)
+ifeq ($(OS),FreeBSD)
 	mkdir -p lib/pkgconfig
 	cat libdata/pkgconfig/lcms2.pc > lib/pkgconfig/lcms2.pc
 endif
@@ -137,15 +149,15 @@ lib/libheif.a: lib/libdav1d.a lib/libde265.a lib/libkvazaar.a lib/libwebp.a
 		-DWITH_X265=OFF \
 		. && \
 	$(MAKE) install
-ifeq ($(shell uname),Darwin)
+ifeq ($(OS),Darwin)
 	sed -e 's@^\(Libs:.*\)$$@\1 -ldav1d -lde265 -lkvazaar -lsharpyuv -lc++@' \
 	    -i'.bak' lib/pkgconfig/libheif.pc
 endif
-ifeq ($(shell uname),FreeBSD)
+ifeq ($(OS),FreeBSD)
 	sed -e 's@^\(Libs:.*\)$$@\1 -ldav1d -lde265 -lkvazaar -lsharpyuv -lc++@' \
 	    -i'.bak' lib/pkgconfig/libheif.pc
 endif
-ifeq ($(shell uname),Linux)
+ifeq ($(OS),Linux)
 	sed -e 's@^\(Libs:.*\)$$@\1 -ldav1d -lde265 -lkvazaar -lsharpyuv -ldl -lstdc++@' \
 	    -i'.bak' lib/pkgconfig/libheif.pc
 endif
